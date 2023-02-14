@@ -1,6 +1,6 @@
 //
 //  AccessibilityIdentifier+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-07-23.
 //
@@ -60,7 +60,8 @@ public struct AccessibilityIdentifier {
 
         let letbindings = groupedIdentifiers.uniques
             .map { id in
-                LetBinding(
+                Static.shared.append(generateStatic(viewControllerName: viewControllerName, id: id))
+                return LetBinding(
                     comments: ["Accessibility identifier `\(id)`."],
                     name: SwiftIdentifier(name: id),
                     valueCodeString: "\"\(id)\""
@@ -72,5 +73,18 @@ public struct AccessibilityIdentifier {
         return Struct(comments: comments, name: structName) {
             letbindings
         }
+    }
+
+    static func generateStatic(viewControllerName: String, id: String) -> Static {
+        let fullname = [viewControllerName, id].joined(separator: ".").escapedStringLiteral
+        let fullNamePath = ["id", viewControllerName, id].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let fullCode = [viewControllerName, id].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let code = "R.id.\(fullCode)"
+        return Static(
+            comments: ["Id `\(fullname.escapedStringLiteral)`."],
+            name: SwiftIdentifier(name: fullNamePath),
+            typeReference: TypeReference(module: .stdLib, rawName: "String"),
+            valueCodeString: code
+        )
     }
 }
