@@ -58,12 +58,26 @@ extension FontResource {
 }
 
 extension FontResource {
+    var sizes: [Int] { [12,14,16,18,20,24,28,32,36,40,44,72,80] }
     func generateVarGetter() -> VarGetter {
-        VarGetter(
+        sizes.forEach { Static.shared.append(generateStatic(size: $0)) }
+        return VarGetter(
             comments: ["Font `\(name)`."],
             name: SwiftIdentifier(name: name),
             typeReference: TypeReference(module: .rswiftResources, rawName: "FontResource"),
             valueCodeString: ".init(name: \"\(name)\", bundle: bundle, filename: \"\(filename)\")"
+        )
+    }
+    
+    func generateStatic(size: Int) -> Static {
+        let fullname = "\(name) size: \(size)"
+        let fullNamePath = SwiftIdentifier(name: name).value
+        let code = "R.font.\(fullNamePath).callAsFunction(size: \(size))!"
+        return Static(
+            comments: ["Font `\(fullname)`."],
+            name: SwiftIdentifier(name: "\(name)\(size)"),
+            typeReference: TypeReference(module: .uiKit, rawName: "UIFont"),
+            valueCodeString: code
         )
     }
 }
