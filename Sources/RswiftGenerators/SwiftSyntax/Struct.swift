@@ -621,3 +621,90 @@ struct PrettyPrinter {
         return ls.joined(separator: "\n")
     }
 }
+
+public struct Static {
+    public static var shared: [Self] = []
+    
+    public let comments: [String]
+    public let name: SwiftIdentifier
+    public let params: [StringParam]
+    public let typeReference: TypeReference
+    public let initialType: TypeReference?
+    public let valueCodeString: String
+    
+    init(comments: [String], name: SwiftIdentifier, params: [StringParam] = [], typeReference: TypeReference, initialType: TypeReference? = nil, valueCodeString: String) {
+        self.comments = comments
+        self.name = name
+        self.params = params
+        self.typeReference = typeReference
+        self.initialType = initialType
+        self.valueCodeString = valueCodeString
+    }
+    
+    public var allModuleReferences: Set<ModuleReference> {
+        typeReference.allModuleReferences
+    }
+
+    func render(_ pp: inout PrettyPrinter) {
+        for c in comments {
+            pp.append(words: ["///", c == "" ? nil : c])
+        }
+        let parameters = zip(params.indices, params).map { ix, p in
+            Function.Parameter(name: p.name ?? "_", localName: "value\(ix + 1)", typeReference: p.spec.typeReference, defaultValue: nil)
+        }.map { $0.codeString() }.joined(separator: ", ")
+
+        let words: [String?]
+        if params.isEmpty {
+            if let initial = initialType?.codeString() {
+                words = ["static", "let", "\(name.value):", initial, "=", valueCodeString]
+            } else {
+                words = ["static", "let", name.value, "=", valueCodeString]
+            }
+        } else {
+            words = ["static", "func", name.value, "(", parameters, ")", "->", typeReference.name, "{\n", valueCodeString, "\n}"]
+        }
+        pp.append(words: words)
+    }
+
+    public static var allNameReferences: Set<String> {
+        return Set(shared.map(\.typeReference.name))
+    }
+    
+    public static var allLetReferences: [Extension] {
+        var extensions = [Extension]()
+        allNameReferences.forEach { typeName in
+            let lets = shared.filter { $0.typeReference.name == typeName }
+            extensions.append(Extension(typeName: typeName, lets: lets))
+        }
+        return extensions
+    }
+}
+
+public struct Extension {
+    public var typeName: String
+    public var lets: [Static] = []
+
+    public var allModuleReferences: Set<ModuleReference> {
+        return Set(lets.flatMap(\.allModuleReferences))
+    }
+
+    public func prettyPrint() -> String {
+        var pp = PrettyPrinter()
+        render(&pp)
+        return pp.render()
+    }
+
+    func render(_ pp: inout PrettyPrinter) {
+        pp.append(words: ["extension", typeName, "{"])
+        pp.indented { pp in
+            for letb in lets {
+                if !letb.comments.isEmpty {
+                    pp.append(line: "")
+                }
+                letb.render(&pp)
+            }
+        }
+
+        pp.append(line: "}")
+    }
+}
