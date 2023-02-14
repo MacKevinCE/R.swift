@@ -11,6 +11,7 @@ import RswiftResources
 public protocol AssetCatalogContent {
     var name: String { get }
     func generateVarGetter() -> VarGetter
+    func generateStatic() -> Static
 }
 
 extension ColorResource {
@@ -99,6 +100,7 @@ extension AssetCatalog.Namespace {
 
 extension ColorResource: AssetCatalogContent {
     public func generateVarGetter() -> VarGetter {
+        Static.shared.append(generateStatic())
         let fullname = (path + [name]).joined(separator: "/")
         let code = ".init(name: \"\(fullname.escapedStringLiteral)\", path: \(path), bundle: bundle)"
         return VarGetter(
@@ -108,10 +110,23 @@ extension ColorResource: AssetCatalogContent {
             valueCodeString: code
         )
     }
+    
+    public func generateStatic() -> Static {
+        let fullname = (path + [name]).joined(separator: "/")
+        let fullNamePath = (path.map({SwiftIdentifier(name: $0).value}) + [ SwiftIdentifier(name: name).value]).joined(separator: ".")
+        let code = "R.color.\(fullNamePath).callAsFunction()!"
+        return Static(
+            comments: ["Color `\(fullname)`."],
+            name: SwiftIdentifier(name: fullNamePath),
+            typeReference:  TypeReference(module: .uiKit, rawName: "UIColor"),
+            valueCodeString: code
+        )
+    }
 }
 
 extension DataResource: AssetCatalogContent {
     public func generateVarGetter() -> VarGetter {
+        Static.shared.append(generateStatic())
         let fullname = (path + [name]).joined(separator: "/")
         let odrt = onDemandResourceTags?.debugDescription ?? "nil"
         let code = ".init(name: \"\(fullname.escapedStringLiteral)\", path: \(path), bundle: bundle, onDemandResourceTags: \(odrt))"
@@ -122,10 +137,23 @@ extension DataResource: AssetCatalogContent {
             valueCodeString: code
         )
     }
+    
+    public func generateStatic() -> Static {
+        let fullname = (path + [name]).joined(separator: "/")
+        let fullNamePath = (path.map({SwiftIdentifier(name: $0).value}) + [ SwiftIdentifier(name: name).value]).joined(separator: ".")
+        let code = "R.data.\(fullNamePath).callAsFunction()!"
+        return Static(
+            comments: ["NSDataAsset `\(fullname)`."],
+            name: SwiftIdentifier(name: fullNamePath),
+            typeReference: TypeReference(module: .uiKit, rawName: "NSDataAsset"),
+            valueCodeString: code
+        )
+    }
 }
 
 extension ImageResource: AssetCatalogContent {
     public func generateVarGetter() -> VarGetter {
+        Static.shared.append(generateStatic())
         let locs = locale.map { $0.codeString() } ?? "nil"
         let odrt = onDemandResourceTags?.debugDescription ?? "nil"
         let fullname = (path + [name]).joined(separator: "/")
@@ -134,6 +162,18 @@ extension ImageResource: AssetCatalogContent {
             comments: ["Image `\(fullname)`."],
             name: SwiftIdentifier(name: name),
             typeReference: TypeReference(module: .rswiftResources, rawName: "ImageResource"),
+            valueCodeString: code
+        )
+    }
+
+    public func generateStatic() -> Static {
+        let fullname = (path + [name]).joined(separator: "/")
+        let fullNamePath = (path.map({SwiftIdentifier(name: $0).value}) + [ SwiftIdentifier(name: name).value]).joined(separator: ".")
+        let code = "R.image.\(fullNamePath).callAsFunction()!"
+        return Static(
+            comments: ["Image `\(fullname)`."],
+            name: SwiftIdentifier(name: fullNamePath),
+            typeReference: TypeReference(module: .uiKit, rawName: "UIImage"),
             valueCodeString: code
         )
     }
