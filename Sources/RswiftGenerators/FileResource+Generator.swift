@@ -35,11 +35,24 @@ extension FileResource {
 
 extension FileResource {
     func generateVarGetter() -> VarGetter {
-        VarGetter(
+        Static.shared.append(generateStatic())
+        return VarGetter(
             comments: ["Resource file `\(filename)`."],
             name: SwiftIdentifier(name: filename),
             typeReference: TypeReference(module: .rswiftResources, rawName: "FileResource"),
             valueCodeString: ".init(name: \"\(name.escapedStringLiteral)\", pathExtension: \"\(pathExtension.escapedStringLiteral)\", bundle: bundle, locale: \(locale?.codeString() ?? "nil"))"
+        )
+    }
+    
+    func generateStatic() -> Static {
+        let fullname = filename
+        let fullNamePath = SwiftIdentifier(name: filename).value
+        let code = "R.file.\(fullNamePath).callAsFunction()!"
+        return Static(
+            comments: ["File `\(fullname)`."],
+            name: SwiftIdentifier(name: filename),
+            typeReference: TypeReference(module: .foundation, rawName: "URL"),
+            valueCodeString: code
         )
     }
 }
