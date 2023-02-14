@@ -1,6 +1,6 @@
 //
 //  NibResource+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-06-24.
 //
@@ -87,6 +87,7 @@ extension NibResource {
     }
 
     func generateVarGetter() -> VarGetter {
+        SLVF.shared.append(contentsOf: generateStaticNib())
         if let reusable = reusables.first {
             let typeReference = TypeReference(
                 module: .rswiftResources,
@@ -115,7 +116,33 @@ extension NibResource {
             )
         }
     }
-
+    
+    func generateStaticNib() -> [SLVF] {
+        let namePathResource = SwiftIdentifier(name: name).value
+        let code = "UINib(resource: R.nib.\(namePathResource))"
+        let nib = SLVF(
+            comments: ["Nib `\(name)`."],
+            name: SwiftIdentifier(name: name),
+            fileReference: .uiNib,
+            valueCodeString: code
+        )
+        if let initialType = rootViews.first, initialType != .uiView {
+            let namePathResource = SwiftIdentifier(name: name).value
+            let code = "R.nib.\(namePathResource).firstView(withOwner: ownerOrNil)!"
+            let custom = SLVF(
+                comments: ["Nib `\(name)`."],
+                name: SwiftIdentifier(name: "nibFirstView"),
+                parameters: [Function.Parameter(name: "withOwner", localName: "ownerOrNil", typeReference: TypeReference(module: .stdLib, rawName: "Any", optional: true), defaultValue: "nil")],
+                fileReference: .uiNib,
+                extensionReference: initialType,
+                typeReference: initialType,
+                valueCodeString: code
+            )
+            return [nib, custom]
+        }
+        return [nib]
+    }
+    
     func generateValidateLines() -> [String] {
         let validateImagesLines = self.usedImageIdentifiers.uniqueAndSorted()
             .map { nameCatalog -> String in

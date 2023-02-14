@@ -1,6 +1,6 @@
 //
 //  ReuseIdentifier+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-07-24.
 //
@@ -83,11 +83,26 @@ extension Reusable {
     }
 
     func generateLetBinding() -> LetBinding {
-        LetBinding(
+        SLVF.shared.append(generateStatic())
+        return LetBinding(
             comments: ["Reuse identifier `\(identifier)`."],
             name: SwiftIdentifier(name: identifier),
             typeReference: genericTypeReference,
             valueCodeString: ".init(identifier: \"\(identifier)\")"
+        )
+    }
+
+    func generateStatic() -> SLVF {
+        let nameComment = identifier
+        let namePathResource = SwiftIdentifier(name: identifier).value
+        let nameIdentifier = ["reuseId", namePathResource].joined(separator: ".")
+        let code = "R.reuseIdentifier.\(namePathResource).identifier"
+
+        return SLVF(
+            comments: ["Reuse Identifier `\(nameComment)`."],
+            name: SwiftIdentifier(name: nameIdentifier),
+            fileReference: .string,
+            valueCodeString: code
         )
     }
 }

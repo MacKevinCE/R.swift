@@ -1,6 +1,6 @@
 //
 //  Segue+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-07-22.
 //
@@ -195,12 +195,41 @@ struct SegueWithInfo {
     }
 
     func generateVarGetter() -> VarGetter {
-        VarGetter(
+        SLVF.shared.append(contentsOf: generateStatic())
+        return VarGetter(
             comments: ["Segue identifier `\(segue.identifier)`."],
             deploymentTarget: deploymentTarget,
             name: SwiftIdentifier(name: segue.identifier),
             typeReference: genericTypeReference,
             valueCodeString: ".init(identifier: \"\(segue.identifier)\")"
         )
+    }
+
+    func generateStatic() -> [SLVF] {
+        let nameComment = segue.identifier
+        let namePathResource = [sourceType.name, segue.identifier].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let nameIdentifierTypedSegue = [sourceType.name, segue.identifier].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let nameIdentifierString = ["segueId", sourceType.name, segue.identifier].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        
+        let codeSegue = "R.segue.\(namePathResource).callAsFunction(segue: self)"
+        let codeString = "R.segue.\(namePathResource).identifier"
+        
+        let typedSegue = SLVF(
+            comments: ["Segue identifier `\(nameComment)`."],
+            isStatic: false,
+            name: SwiftIdentifier(name: nameIdentifierTypedSegue),
+            fileReference: .uiStoryboardSegue,
+            typeReference: TypeReference(module: .rswiftResources, name: "TypedSegue", genericArgs: [segue.type, sourceType, destinationType], optional: true),
+            valueCodeString: codeSegue
+        )
+
+        let string = SLVF(
+            comments: ["Segue identifier `\(nameComment)`."],
+            name: SwiftIdentifier(name: nameIdentifierString),
+            fileReference: .string,
+            valueCodeString: codeString
+        )
+
+        return [typedSegue, string]
     }
 }

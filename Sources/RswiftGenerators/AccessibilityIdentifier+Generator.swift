@@ -60,7 +60,7 @@ public struct AccessibilityIdentifier {
 
         let letbindings = groupedIdentifiers.uniques
             .map { id in
-                Static.shared.append(generateStatic(viewControllerName: viewControllerName, id: id))
+                SLVF.shared.append(generateStatic(viewControllerName: viewControllerName, id: id))
                 return LetBinding(
                     comments: ["Accessibility identifier `\(id)`."],
                     name: SwiftIdentifier(name: id),
@@ -75,15 +75,15 @@ public struct AccessibilityIdentifier {
         }
     }
 
-    static func generateStatic(viewControllerName: String, id: String) -> Static {
-        let fullname = [viewControllerName, id].joined(separator: ".").escapedStringLiteral
-        let fullNamePath = ["id", viewControllerName, id].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
-        let fullCode = [viewControllerName, id].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
-        let code = "R.id.\(fullCode)"
-        return Static(
-            comments: ["Id `\(fullname.escapedStringLiteral)`."],
-            name: SwiftIdentifier(name: fullNamePath),
-            typeReference: TypeReference(module: .stdLib, rawName: "String"),
+    static func generateStatic(viewControllerName: String, id: String) -> SLVF {
+        let nameComment = [viewControllerName, id].joined(separator: ".").escapedStringLiteral
+        let nameIdentifier = ["accessibilityId", viewControllerName, id].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let namePathResource = [viewControllerName, id].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let code = "R.id.\(namePathResource)"
+        return SLVF(
+            comments: ["Accessibility identifier `\(nameComment)`."],
+            name: SwiftIdentifier(name: nameIdentifier),
+            fileReference: .string,
             valueCodeString: code
         )
     }

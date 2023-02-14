@@ -58,9 +58,8 @@ extension FontResource {
 }
 
 extension FontResource {
-    var sizes: [Int] { [12,14,16,18,20,24,28,32,36,40,44,72,80] }
     func generateVarGetter() -> VarGetter {
-        sizes.forEach { Static.shared.append(generateStatic(size: $0)) }
+        SLVF.shared.append(contentsOf: generateStatic())
         return VarGetter(
             comments: ["Font `\(name)`."],
             name: SwiftIdentifier(name: name),
@@ -68,16 +67,29 @@ extension FontResource {
             valueCodeString: ".init(name: \"\(name)\", bundle: bundle, filename: \"\(filename)\")"
         )
     }
-    
-    func generateStatic(size: Int) -> Static {
-        let fullname = "\(name) size: \(size)"
-        let fullNamePath = SwiftIdentifier(name: name).value
-        let code = "R.font.\(fullNamePath).callAsFunction(size: \(size))!"
-        return Static(
-            comments: ["Font `\(fullname)`."],
-            name: SwiftIdentifier(name: "\(name)\(size)"),
-            typeReference: TypeReference(module: .uiKit, rawName: "UIFont"),
+
+    func generateStatic() -> [SLVF] {
+        let namePathResource = SwiftIdentifier(name: name).value
+        let letSize = [12, 14, 16, 18, 20, 24, 28, 32, 36, 40, 44, 72, 80].map { size in
+            let code = "\(namePathResource)(size: \(size))"
+            return SLVF(
+                comments: ["Font `\(name) size: \(size)`."],
+                name: SwiftIdentifier(name: "\(name)\(size)"),
+                fileReference: .uiFont,
+                valueCodeString: code
+            )
+        }
+
+        let code = "R.font.\(namePathResource).callAsFunction(size: size)!"
+        let funcSize = SLVF(
+            comments: ["Font `\(name)`."],
+            name: SwiftIdentifier(name: name),
+            parameters: [Function.Parameter(name: "size", localName: nil, typeReference: .cgFloat, defaultValue: nil)],
+            fileReference: .uiFont,
+            typeReference: .uiFont,
             valueCodeString: code
         )
+
+        return [[funcSize], letSize].flatMap { $0 }
     }
 }

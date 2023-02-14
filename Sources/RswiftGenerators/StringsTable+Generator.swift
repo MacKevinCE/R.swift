@@ -358,7 +358,7 @@ private struct StringWithParams {
     }
 
     func generateVarGetter() -> VarGetter {
-        Static.shared.append(generateStatic())
+        SLVF.shared.append(generateStatic())
         let developmentLanguageValue = values.filter { $0.0.localeDescription == developmentLanguage }.first?.1
         let developmentValue = developmentLanguageValue.map { "\"\($0.escapedStringLiteral)\"" } ?? "nil"
 
@@ -373,20 +373,21 @@ private struct StringWithParams {
             valueCodeString: varValueCodeString
         )
     }
-    
-    func generateStatic() -> Static {
-        let fullname = key.escapedStringLiteral
-        let fullNamePath = [tableName, key].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
-        let arguments = zip(params.indices, params).map { ix, p in
+
+    func generateStatic() -> SLVF {
+        let nameComment = key.escapedStringLiteral
+        let namePathResource = [tableName, key].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let nameIdentifier = ["string", tableName, key].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let parameters = zip(params.indices, params).map { ix, p in
             Function.Parameter(name: p.name ?? "_", localName: "value\(ix + 1)", typeReference: p.spec.typeReference, defaultValue: nil)
-        }.map {  $0.localName ?? $0.name }.joined(separator: ", ")
-        
-        let code = "R.string.\(fullNamePath).callAsFunction(\(arguments))"
-        return Static(
-            comments: ["String `\(fullname)`."],
-            name: SwiftIdentifier(name: fullNamePath),
-            params: params,
-            typeReference: TypeReference(module: .stdLib, rawName: "String"),
+        }
+        let arguments = parameters.map { $0.localName ?? $0.name }.joined(separator: ", ")
+        let code = "R.string.\(namePathResource).callAsFunction(\(arguments))"
+        return SLVF(
+            comments: ["String `\(nameComment)`."],
+            name: SwiftIdentifier(name: nameIdentifier),
+            parameters: parameters,
+            fileReference: .string,
             valueCodeString: code
         )
     }

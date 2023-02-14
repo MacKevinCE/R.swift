@@ -1,6 +1,6 @@
 //
 //  Struct.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-07-16.
 //
@@ -622,89 +622,163 @@ struct PrettyPrinter {
     }
 }
 
-public struct Static {
+// MARK: - Static
+public struct SLVF {
     public static var shared: [Self] = []
-    
+
     public let comments: [String]
-    public let name: SwiftIdentifier
-    public let params: [StringParam]
-    public let typeReference: TypeReference
-    public let initialType: TypeReference?
+    public let isStatic: Bool
+    public var name: SwiftIdentifier
+    public let parameters: [Function.Parameter]?
+    public let fileReference: TypeReference
+    public let extensionReference: TypeReference
+    public let typeReference: TypeReference?
     public let valueCodeString: String
     
-    init(comments: [String], name: SwiftIdentifier, params: [StringParam] = [], typeReference: TypeReference, initialType: TypeReference? = nil, valueCodeString: String) {
+    private func identifier(suffix: String) -> String {
+        return SwiftIdentifier(name: [name.value, suffix].joined(separator: ".")).value
+    }
+    
+    init(comments: [String], isStatic: Bool = true, name: SwiftIdentifier, parameters: [Function.Parameter]? = nil, fileReference: TypeReference, typeReference: TypeReference? = nil, valueCodeString: String) {
         self.comments = comments
+        self.isStatic = isStatic
         self.name = name
-        self.params = params
+        self.parameters = parameters
+        self.fileReference = fileReference
+        self.extensionReference = fileReference
         self.typeReference = typeReference
-        self.initialType = initialType
         self.valueCodeString = valueCodeString
     }
     
-    public var allModuleReferences: Set<ModuleReference> {
-        typeReference.allModuleReferences
+    init(comments: [String], isStatic: Bool = true, name: SwiftIdentifier, parameters: [Function.Parameter]? = nil, fileReference: TypeReference, extensionReference: TypeReference, typeReference: TypeReference? = nil, valueCodeString: String, isRenderCustom: Bool = false) {
+        self.comments = comments
+        self.isStatic = isStatic
+        self.name = name
+        self.parameters = parameters
+        self.fileReference = fileReference
+        self.extensionReference = extensionReference
+        self.typeReference = typeReference
+        self.valueCodeString = valueCodeString
     }
 
-    func render(_ pp: inout PrettyPrinter) {
+    public var allModuleReferences: Set<ModuleReference> {
+        fileReference.allModuleReferences
+    }
+
+    func render(_ pp: inout PrettyPrinter, suffix: String = "") {
         for c in comments {
             pp.append(words: ["///", c == "" ? nil : c])
         }
-        let parameters = zip(params.indices, params).map { ix, p in
-            Function.Parameter(name: p.name ?? "_", localName: "value\(ix + 1)", typeReference: p.spec.typeReference, defaultValue: nil)
-        }.map { $0.codeString() }.joined(separator: ", ")
-
-        let words: [String?]
-        if params.isEmpty {
-            if let initial = initialType?.codeString() {
-                words = ["static", "let", "\(name.value):", initial, "=", valueCodeString]
+        let identifier = identifier(suffix: suffix)
+        let textParams = parameters?.map { $0.codeString() }.joined(separator: ", ")
+        if let params = textParams {
+            if let typeReference = typeReference?.codeString() {
+                let words = [
+                    isStatic ? "static" : nil,
+                    "func", "\(identifier)(\(params))",
+                    "->", typeReference, "{",
+                ]
+                pp.append(words: words)
+                pp.indented { pp in
+                    pp.append(line: valueCodeString)
+                }
+                pp.append(line: "}")
             } else {
-                words = ["static", "let", name.value, "=", valueCodeString]
+                let words = [
+                    isStatic ? "static" : nil,
+                    "func", "\(identifier)(\(params))", "{",
+                ]
+                pp.append(words: words)
+                pp.indented { pp in
+                    pp.append(line: valueCodeString)
+                }
+                pp.append(line: "}")
             }
         } else {
-            words = ["static", "func", name.value, "(", parameters, ")", "->", typeReference.name, "{\n", valueCodeString, "\n}"]
+            if let typeReference = typeReference?.codeString(), !isStatic {
+                pp.append(words: ["var", "\(identifier):", typeReference, "{"])
+                pp.indented { pp in
+                    pp.append(line: valueCodeString)
+                }
+                pp.append(line: "}")
+            } else {
+                if let typeReference = typeReference?.codeString() {
+                    let words = [
+                        isStatic ? "static" : nil,
+                        "let", "\(identifier):", typeReference, "=", valueCodeString,
+                    ]
+                    pp.append(words: words)
+                } else {
+                    let words = [
+                        isStatic ? "static" : nil,
+                        "let", identifier, "=", valueCodeString,
+                    ]
+                    pp.append(words: words)
+                }
+            }
         }
-        pp.append(words: words)
     }
 
-    public static var allNameReferences: Set<String> {
-        return Set(shared.map(\.typeReference.name))
+    public static var allTypeReferences: Set<String> {
+        return Set(shared.map(\.fileReference.name))
     }
     
-    public static var allLetReferences: [Extension] {
-        var extensions = [Extension]()
-        allNameReferences.forEach { typeName in
-            let lets = shared.filter { $0.typeReference.name == typeName }
-            extensions.append(Extension(typeName: typeName, lets: lets))
-        }
-        return extensions
+    public static var getGroupExtension: [GroupExtension] {
+        Dictionary(grouping: shared.enumerated(), by: { $0.element.fileReference })
+            .mapValues {
+                Dictionary(grouping: $0, by: { $0.element.extensionReference })
+            }
+            .map {
+                GroupExtension(typeName: $0.key, extensions: $0.value.map {
+                    Extension(typeName: $0.key, lets: $0.value.sorted(by: { $0.offset < $1.offset }).map { $0.element })
+                })
+            }
     }
 }
 
-public struct Extension {
-    public var typeName: String
-    public var lets: [Static] = []
-
-    public var allModuleReferences: Set<ModuleReference> {
-        return Set(lets.flatMap(\.allModuleReferences))
-    }
-
+public struct GroupExtension {
+    public var typeName: TypeReference
+    public var extensions: [Extension]
+    
     public func prettyPrint() -> String {
         var pp = PrettyPrinter()
         render(&pp)
         return pp.render()
     }
+    
+    func render(_ pp: inout PrettyPrinter) {
+        extensions.forEach {
+            $0.render(&pp)
+        }
+    }
+}
+
+// MARK: - Extension
+public struct Extension {
+    public var typeName: TypeReference
+    public var lets: [SLVF]
+
+    public var allModuleReferences: Set<ModuleReference> {
+        return Set(lets.flatMap(\.allModuleReferences))
+    }
 
     func render(_ pp: inout PrettyPrinter) {
-        pp.append(words: ["extension", typeName, "{"])
+        pp.append(words: ["extension", typeName.codeString(), "{"])
         pp.indented { pp in
-            for letb in lets {
-                if !letb.comments.isEmpty {
-                    pp.append(line: "")
+            Dictionary(grouping: lets.enumerated(), by: { $0.element.name.value })
+                .mapValues { $0.sorted(by: { $0.offset < $1.offset }) }
+                .sorted(by: { $0.value.first!.offset < $1.value.first!.offset })
+                .map { $0.value.map { $0.element } }
+                .forEach {
+                    $0.forEach {
+                        if !$0.comments.isEmpty {
+                            pp.append(line: "")
+                        }
+                        $0.render(&pp)
+                    }
                 }
-                letb.render(&pp)
-            }
         }
-
         pp.append(line: "}")
+        pp.append(line: "")
     }
 }

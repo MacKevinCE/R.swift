@@ -1,6 +1,6 @@
 //
 //  FileResource+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-06-24.
 //
@@ -35,7 +35,7 @@ extension FileResource {
 
 extension FileResource {
     func generateVarGetter() -> VarGetter {
-        Static.shared.append(generateStatic())
+        SLVF.shared.append(generateStatic())
         return VarGetter(
             comments: ["Resource file `\(filename)`."],
             name: SwiftIdentifier(name: filename),
@@ -43,15 +43,15 @@ extension FileResource {
             valueCodeString: ".init(name: \"\(name.escapedStringLiteral)\", pathExtension: \"\(pathExtension.escapedStringLiteral)\", bundle: bundle, locale: \(locale?.codeString() ?? "nil"))"
         )
     }
-    
-    func generateStatic() -> Static {
-        let fullname = filename
-        let fullNamePath = SwiftIdentifier(name: filename).value
-        let code = "R.file.\(fullNamePath).callAsFunction()!"
-        return Static(
-            comments: ["File `\(fullname)`."],
+
+    func generateStatic() -> SLVF {
+        let nameComment = filename
+        let namePathResource = SwiftIdentifier(name: filename).value
+        let code = "R.file.\(namePathResource).callAsFunction()!"
+        return SLVF(
+            comments: ["File `\(nameComment)`."],
             name: SwiftIdentifier(name: filename),
-            typeReference: TypeReference(module: .foundation, rawName: "URL"),
+            fileReference: .url,
             valueCodeString: code
         )
     }

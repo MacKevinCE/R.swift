@@ -106,11 +106,12 @@ public struct RswiftCore {
     }
 
     private func generateExtensionFile() throws {
-        try Static.allLetReferences.forEach {
-            let relativePath = outputURL.relativePath.replacingOccurrences(of: ".\(outputURL.pathExtension)", with: "+\($0.typeName).\(outputURL.pathExtension)")
+        try SLVF.getGroupExtension.forEach {
+            let relativePath = outputURL.relativePath.replacingOccurrences(of: ".\(outputURL.pathExtension)", with: "+\($0.typeName.name).\(outputURL.pathExtension)")
             
-            let imports = Set($0.allModuleReferences.compactMap(\.name))
+            let imports = Set($0.extensions.flatMap(\.allModuleReferences).compactMap(\.name))
                 .union(importModules)
+                .union(["RswiftResources"])
                 .subtracting([productModuleName].compactMap { $0 })
                 .sorted()
                 .map { "import \($0)" }

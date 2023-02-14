@@ -12,11 +12,12 @@ extension TypeReference {
     func codeString() -> String {
         let args = genericArgs.map { $0.codeString() }.joined(separator: ", ")
         let rawName = args.isEmpty ? name : "\(name)<\(args)>"
-
+        let rawOptional = optional ? "\(rawName)?" : rawName
+        
         if case .custom(let module) = module {
-            return "\(module).\(rawName)"
+            return "\(module).\(rawOptional)"
         } else {
-            return rawName
+            return rawOptional
         }
     }
 
@@ -42,7 +43,14 @@ extension TypeReference {
     static var uiView: TypeReference = .init(module: .uiKit, rawName: "UIView")
     static var uiViewController: TypeReference = .init(module: .uiKit, rawName: "UIViewController")
     static var nsViewController: TypeReference = .init(module: .appKit, rawName: "NSViewController")
-
+    static var cgFloat: TypeReference = .init(module: .stdLib, rawName: "CGFloat")
+    static var uiColor: TypeReference = .init(module: .uiKit, rawName: "UIColor")
+    static var uiFont: TypeReference = .init(module: .uiKit, rawName: "UIFont")
+    static var uiImage: TypeReference = .init(module: .uiKit, rawName: "UIImage")
+    static var uiNib: TypeReference = .init(module: .uiKit, rawName: "UINib")
+    static var uiStoryboardSegue: TypeReference = .init(module: .uiKit, rawName: "UIStoryboardSegue")
+    static var nsDataAsset: TypeReference = .init(module: .uiKit, rawName: "NSDataAsset")
+    static var url: TypeReference = .init(module: .foundation, rawName: "URL")
 
     static var fontResource: TypeReference = .init(module: .rswiftResources, rawName: "FontResource")
 }

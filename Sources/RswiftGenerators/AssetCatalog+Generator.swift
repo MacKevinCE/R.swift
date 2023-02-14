@@ -1,6 +1,6 @@
 //
 //  AssetCatalog+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-07-23.
 //
@@ -11,7 +11,7 @@ import RswiftResources
 public protocol AssetCatalogContent {
     var name: String { get }
     func generateVarGetter() -> VarGetter
-    func generateStatic() -> Static
+    func generateStatic() -> SLVF
 }
 
 extension ColorResource {
@@ -100,7 +100,7 @@ extension AssetCatalog.Namespace {
 
 extension ColorResource: AssetCatalogContent {
     public func generateVarGetter() -> VarGetter {
-        Static.shared.append(generateStatic())
+        SLVF.shared.append(generateStatic())
         let fullname = (path + [name]).joined(separator: "/")
         let code = ".init(name: \"\(fullname.escapedStringLiteral)\", path: \(path), bundle: bundle)"
         return VarGetter(
@@ -111,14 +111,14 @@ extension ColorResource: AssetCatalogContent {
         )
     }
     
-    public func generateStatic() -> Static {
+    public func generateStatic() -> SLVF {
         let fullname = (path + [name]).joined(separator: "/")
         let fullNamePath = (path.map({SwiftIdentifier(name: $0).value}) + [ SwiftIdentifier(name: name).value]).joined(separator: ".")
         let code = "R.color.\(fullNamePath).callAsFunction()!"
-        return Static(
+        return SLVF(
             comments: ["Color `\(fullname)`."],
             name: SwiftIdentifier(name: fullNamePath),
-            typeReference:  TypeReference(module: .uiKit, rawName: "UIColor"),
+            fileReference:  .uiColor,
             valueCodeString: code
         )
     }
@@ -126,7 +126,7 @@ extension ColorResource: AssetCatalogContent {
 
 extension DataResource: AssetCatalogContent {
     public func generateVarGetter() -> VarGetter {
-        Static.shared.append(generateStatic())
+        SLVF.shared.append(generateStatic())
         let fullname = (path + [name]).joined(separator: "/")
         let odrt = onDemandResourceTags?.debugDescription ?? "nil"
         let code = ".init(name: \"\(fullname.escapedStringLiteral)\", path: \(path), bundle: bundle, onDemandResourceTags: \(odrt))"
@@ -138,14 +138,14 @@ extension DataResource: AssetCatalogContent {
         )
     }
     
-    public func generateStatic() -> Static {
+    public func generateStatic() -> SLVF {
         let fullname = (path + [name]).joined(separator: "/")
         let fullNamePath = (path.map({SwiftIdentifier(name: $0).value}) + [ SwiftIdentifier(name: name).value]).joined(separator: ".")
         let code = "R.data.\(fullNamePath).callAsFunction()!"
-        return Static(
+        return SLVF(
             comments: ["NSDataAsset `\(fullname)`."],
             name: SwiftIdentifier(name: fullNamePath),
-            typeReference: TypeReference(module: .uiKit, rawName: "NSDataAsset"),
+            fileReference: .nsDataAsset,
             valueCodeString: code
         )
     }
@@ -153,7 +153,7 @@ extension DataResource: AssetCatalogContent {
 
 extension ImageResource: AssetCatalogContent {
     public func generateVarGetter() -> VarGetter {
-        Static.shared.append(generateStatic())
+        SLVF.shared.append(generateStatic())
         let locs = locale.map { $0.codeString() } ?? "nil"
         let odrt = onDemandResourceTags?.debugDescription ?? "nil"
         let fullname = (path + [name]).joined(separator: "/")
@@ -166,14 +166,14 @@ extension ImageResource: AssetCatalogContent {
         )
     }
 
-    public func generateStatic() -> Static {
-        let fullname = (path + [name]).joined(separator: "/")
-        let fullNamePath = (path.map({SwiftIdentifier(name: $0).value}) + [ SwiftIdentifier(name: name).value]).joined(separator: ".")
-        let code = "R.image.\(fullNamePath).callAsFunction()!"
-        return Static(
-            comments: ["Image `\(fullname)`."],
-            name: SwiftIdentifier(name: fullNamePath),
-            typeReference: TypeReference(module: .uiKit, rawName: "UIImage"),
+    public func generateStatic() -> SLVF {
+        let nameComment = (path + [name]).joined(separator: "/")
+        let namePathResource = (path.map { SwiftIdentifier(name: $0).value } + [SwiftIdentifier(name: name).value]).joined(separator: ".")
+        let code = "R.image.\(namePathResource).callAsFunction()!"
+        return SLVF(
+            comments: ["Image `\(nameComment)`."],
+            name: SwiftIdentifier(name: namePathResource),
+            fileReference: .uiImage,
             valueCodeString: code
         )
     }
