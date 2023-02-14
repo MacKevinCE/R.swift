@@ -1,6 +1,6 @@
 //
 //  StoryboardResource+Generator.swift
-//  
+//
 //
 //  Created by Tom Lokhorst on 2022-06-24.
 //
@@ -112,9 +112,11 @@ private extension StoryboardResource {
             .grouped(bySwiftIdentifier: { $0 })
             .reportWarningsForReservedNames(source: "view controller", container: "in storyboard '\(name)'", result: "view controller", warning: warning)
 
+        Static.shared.append(contentsOf: generateStatic(identifier: name, initialType: initialViewController?.type))
+
         let vargetters = grouped.uniques
             .filter { !reservedIdentifiers.contains(SwiftIdentifier(rawValue: $0.identifier)) }
-            .map { (id, vc) in vc.generateVarGetter(identifier: id) }
+            .map { (id, vc) in vc.generateVarGetter(name: name, identifier: id) }
             .sorted { $0.name < $1.name }
 
         let letName = LetBinding(
@@ -191,6 +193,27 @@ private extension StoryboardResource {
             valueCodeString: validateLines.joined(separator: "\n")
         )
     }
+
+    func generateStatic(identifier: String, initialType: TypeReference?) -> [Static] {
+        let fullname = identifier.escapedStringLiteral
+        let fullNamePath = SwiftIdentifier(name: identifier).value
+        let codeViewController = "R.storyboard.\(fullNamePath).instantiateInitialViewController()!"
+        let codeStoryboard = "UIStoryboard(resource: R.storyboard.\(fullNamePath))"
+        let viewController = Static(
+            comments: ["Storyboard `\(fullname)`."],
+            name: SwiftIdentifier(name: identifier),
+            typeReference: TypeReference(module: .uiKit, rawName: "UIViewController"),
+            initialType: initialType,
+            valueCodeString: codeViewController
+        )
+        let storyboard = Static(
+            comments: ["Storyboard `\(fullname)`."],
+            name: SwiftIdentifier(name: identifier),
+            typeReference: TypeReference(module: .uiKit, rawName: "UIStoryboard"),
+            valueCodeString: codeStoryboard
+        )
+        return [viewController, storyboard]
+    }
 }
 
 private extension StoryboardResource.ViewController {
@@ -202,11 +225,25 @@ private extension StoryboardResource.ViewController {
         )
     }
 
-    func generateVarGetter(identifier: String) -> VarGetter {
-        VarGetter(
+    func generateVarGetter(name: String, identifier: String) -> VarGetter {
+        Static.shared.append(generateStatic(name: name, identifier: identifier))
+        return VarGetter(
             name: SwiftIdentifier(name: identifier),
             typeReference: genericTypeReference,
             valueCodeString: #".init(identifier: "\#(identifier.escapedStringLiteral)", storyboard: name, bundle: bundle)"#
+        )
+    }
+    
+    func generateStatic(name: String, identifier: String) -> Static {
+        let fullname = [name, identifier].joined(separator: ".").escapedStringLiteral
+        let fullNamePath = [name, identifier].map { SwiftIdentifier(name: $0).value }.joined(separator: ".")
+        let code = "R.storyboard.\(fullNamePath).callAsFunction()!"
+        return Static(
+            comments: ["Storyboard `\(fullname)`."],
+            name: SwiftIdentifier(name: fullNamePath),
+            typeReference: TypeReference(module: .uiKit, rawName: "UIViewController"),
+            initialType: type,
+            valueCodeString: code
         )
     }
 }
